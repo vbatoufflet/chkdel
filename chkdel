@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2012 Vincent Batoufflet.
+#
+# License: BSD, see LICENSE for more details.
+#
+
+__version__ = '0.1'
+
+
+import os
+import getopt
+import re
+import sys
+
+
+DEFAULT_CONFIG_FILE = '/etc/chkdel.conf'
+EXCLUDE_PATTERNS = ['/dev/zero', '/SYS.*']
+
+
+def get_command(pid):
+    # Get command line
+    return open('/proc/%d/cmdline' % pid, 'r').read().replace('\x00', ' ')
+
+
+def get_deleted(pid, _compile=None):
+    result = set()
+
+    # Parse maps for deleted files
+    for line in open('/proc/%d/maps' % pid, 'r'):
+        chunks = line.split()
+
+        if chunks[-1] == '(deleted)':
+            result.add(chunks[-2])
+
+    if _compile:
+        # Remove excluded patterns
+        result -= set(x for x in result if _compile.match(x))
+
+    return result
+
+
+def get_processes():
+    # Get processes list
+    return [int(x) for x in os.listdir('/proc') if x.isdigit()]
+
+
+def get_program(pid):
+    # Get program path
+    return os.readlink('/proc/%d/exe' % pid)
+
+
+def print_usage(fd=sys.stdout):
+    fd.write('''Usage: %s [OPTIONS]
+
+Check for running processes using deleted files.
+
+Options:
+   -c, --config    set configuration file path
+   -h, --help      display this help and exit
+   -v, --verbose   generate detailed output
+   -V, --version   display program version and exit
+''' % os.path.basename(sys.argv[0]))
+
+
+def print_version():
+    sys.stdout.write('%s version %s\n' % (os.path.basename(sys.argv[0]), __version__))
+
+
+if __name__ == '__main__':
+    # Parse for command-line arguments
+    opt_config = DEFAULT_CONFIG_FILE
+    opt_verbose = False
+
+    try:
+        opts, args = getopt.gnu_getopt(sys.argv[1:], 'c:hvV', ['config=', 'help', 'verbose', 'version'])
+
+        for opt, arg in opts:
+            if opt in ('-h', '--help'):
+                print_usage()
+                sys.exit(0)
+            elif opt in ('-c', '--config'):
+                opt_config = arg
+            elif opt in ('-v', '--verbose'):
+                opt_verbose = True
+            elif opt in ('-V', '--version'):
+                print_version()
+                sys.exit(0)
+    except getopt.GetoptError, e:
+        sys.stderr.write('Error: %s\n' % e)
+        print_usage(fd=sys.stderr)
+        sys.exit(1)
+
+    # Check for root user
+    if os.getuid() != 0:
+        sys.stderr.write('Error: this program must be run as root\n')
+        sys.exit(1)
+
+    # Prepare exclude patterns
+    patterns = EXCLUDE_PATTERNS[:]
+
+    if os.path.exists(opt_config):
+        patterns.extend([x.strip() for x in open(opt_config, 'r') if not x.lstrip().startswith('#')])
+    elif opt_config != DEFAULT_CONFIG_FILE:
+        sys.stderr.write('Error: file %s does not exist\n' % opt_config)
+        sys.exit(1)
+
+    re_compile = re.compile(r'^(%s)$' % '|'.join(patterns))
+
+    # Check for deleted files
+    count = 0
+    files = set()
+    programs = set()
+
+    for pid in get_processes():
+        deleted = get_deleted(pid, _compile=re_compile)
+
+        if deleted:
+            program = get_program(pid)
+
+            if opt_verbose:
+                sys.stdout.write('PID: %d\nProgram: %s\nFiles:\n   ' % (pid, program))
+                sys.stdout.write('\n   '.join(sorted(deleted)) + '\n')
+                sys.stdout.write('Command:\n   ' + get_command(pid) + '\n\n')
+
+            files = files.union(deleted)
+            programs.add(program)
+            count += 1
+
+    # Print result
+    if count > 0:
+        sys.stdout.write('Found %d process%s using deleted files\n' % (count, 'es' if count > 1 else ''))
+        sys.stdout.write('%d distinct program%s:\n   ' % (len(programs), 's' if len(programs) > 1 else ''))
+        sys.stdout.write('\n   '.join(sorted(programs)) + '\n')
+        sys.stdout.write('%d distinct file%s:\n   ' % (len(files), 's' if len(files) > 1 else ''))
+        sys.stdout.write('\n   '.join(sorted(files)) + '\n')
+    else:
+        sys.stdout.write('No process found\n')
