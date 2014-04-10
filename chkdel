@@ -29,10 +29,10 @@ def get_deleted(pid, _compile=None):
 
     # Parse maps for deleted files
     for line in open('/proc/%d/maps' % pid, 'r'):
-        chunks = line.split()
+        chunks = line.rsplit(None, 2)
 
-        if chunks[-1] == '(deleted)':
-            result.add(chunks[-2])
+        if chunks[2] == '(deleted)' and (opt_filter is None or opt_filter.lower() in chunks[1].lower()):
+            result.add(chunks[1])
 
     if _compile:
         # Remove excluded patterns
@@ -71,10 +71,11 @@ def print_version():
 if __name__ == '__main__':
     # Parse for command-line arguments
     opt_config = DEFAULT_CONFIG_FILE
+    opt_filter = None
     opt_verbose = 0
 
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], 'c:hvV', ['config=', 'help', 'verbose', 'version'])
+        opts, args = getopt.gnu_getopt(sys.argv[1:], 'c:f:hvV', ['config=', 'filter=', 'help', 'verbose', 'version'])
 
         for opt, arg in opts:
             if opt in ('-h', '--help'):
@@ -82,6 +83,8 @@ if __name__ == '__main__':
                 sys.exit(0)
             elif opt in ('-c', '--config'):
                 opt_config = arg
+            elif opt in ('-f', '--filter'):
+                opt_filter = arg
             elif opt in ('-v', '--verbose'):
                 opt_verbose += 1
             elif opt in ('-V', '--version'):
