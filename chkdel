@@ -87,7 +87,7 @@ if __name__ == '__main__':
             elif opt in ('-V', '--version'):
                 print_version()
                 sys.exit(0)
-    except getopt.GetoptError, e:
+    except getopt.GetoptError as e:
         sys.stderr.write('Error: %s\n' % e)
         print_usage(fd=sys.stderr)
         sys.exit(1)
