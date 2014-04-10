@@ -59,7 +59,7 @@ Check for running processes using deleted files.
 Options:
    -c, --config    set configuration file path
    -h, --help      display this help and exit
-   -v, --verbose   generate detailed output
+   -v, --verbose   set output verbosity (multiple options increase verbosity)
    -V, --version   display program version and exit
 ''' % os.path.basename(sys.argv[0]))
 
@@ -71,7 +71,7 @@ def print_version():
 if __name__ == '__main__':
     # Parse for command-line arguments
     opt_config = DEFAULT_CONFIG_FILE
-    opt_verbose = False
+    opt_verbose = 0
 
     try:
         opts, args = getopt.gnu_getopt(sys.argv[1:], 'c:hvV', ['config=', 'help', 'verbose', 'version'])
@@ -83,7 +83,7 @@ if __name__ == '__main__':
             elif opt in ('-c', '--config'):
                 opt_config = arg
             elif opt in ('-v', '--verbose'):
-                opt_verbose = True
+                opt_verbose += 1
             elif opt in ('-V', '--version'):
                 print_version()
                 sys.exit(0)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
             if not program in programs:
                 programs[program] = []
 
-            if opt_verbose:
+            if opt_verbose > 1:
                 sys.stdout.write('PID: %d\nProgram: %s\nFiles:\n   ' % (pid, program))
                 sys.stdout.write('\n   '.join(sorted(deleted)) + '\n')
                 sys.stdout.write('Command:\n   ' + get_command(pid) + '\n\n')
@@ -134,9 +134,15 @@ if __name__ == '__main__':
     # Print result
     if count > 0:
         sys.stdout.write('Found %d process%s using deleted files\n' % (count, 'es' if count > 1 else ''))
+
         sys.stdout.write('%d distinct program%s\n' % (len(programs), 's' if len(programs) > 1 else ''))
-        sys.stdout.write('   ' + '\n   '.join(sorted(programs)) + '\n')
+
+        if opt_verbose > 0:
+            sys.stdout.write('   ' + '\n   '.join(sorted(programs)) + '\n')
+
         sys.stdout.write('%d distinct file%s\n' % (len(files), 's' if len(files) > 1 else ''))
-        sys.stdout.write('   ' + '\n   '.join(sorted(files)) + '\n')
+
+        if opt_verbose > 0:
+            sys.stdout.write('   ' + '\n   '.join(sorted(files)) + '\n')
     else:
         sys.stdout.write('No process found\n')
