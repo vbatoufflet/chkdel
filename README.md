@@ -11,11 +11,11 @@ Its code is available at [Github][0], and is licensed under the terms of the [BS
 
 **Requirements:**
 
-* Python 2.5+
+* Python 2.6+
 
 **Usage:**
 
-	$ chkdel -v
+	$ chkdel -f libssl -vv
 	PID: 23848
 	Program: /usr/bin/python2.6
 	Files:
@@ -24,9 +24,9 @@ Its code is available at [Github][0], and is licensed under the terms of the [BS
 	   python /usr/sbin/denyhosts --daemon --purge --config=/etc/denyhosts.conf --config=/etc/denyhosts.conf
 
 	Found 1 process using deleted files
-	1 distinct program:
+	1 distinct program
 	   /usr/bin/python2.6
-	1 distinct file:
+	1 distinct file
 	   /usr/lib/libssl.so.0.9.8
 
 
